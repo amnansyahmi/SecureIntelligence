@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureIntelligence.Core", "src\SecureIntelligence.Core\SecureIntelligence.Core.csproj", "{0B8A6D1E-5E82-4E94-BCA6-6AA9996E84AC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureIntelligence.Api", "src\SecureIntelligence.Api\SecureIntelligence.Api.csproj", "{95DD52D3-77DB-4B4A-84E4-15AF902196CE}"
+EndProject
+Global
+    GlobalSection(SolutionConfigurationPlatforms) = preSolution
+        Debug|Any CPU = Debug|Any CPU
+        Release|Any CPU = Release|Any CPU
+    EndGlobalSection
+    GlobalSection(ProjectConfigurationPlatforms) = postSolution
+        {0B8A6D1E-5E82-4E94-BCA6-6AA9996E84AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+        {0B8A6D1E-5E82-4E94-BCA6-6AA9996E84AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+        {0B8A6D1E-5E82-4E94-BCA6-6AA9996E84AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+        {0B8A6D1E-5E82-4E94-BCA6-6AA9996E84AC}.Release|Any CPU.Build.0 = Release|Any CPU
+        {95DD52D3-77DB-4B4A-84E4-15AF902196CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+        {95DD52D3-77DB-4B4A-84E4-15AF902196CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+        {95DD52D3-77DB-4B4A-84E4-15AF902196CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+        {95DD52D3-77DB-4B4A-84E4-15AF902196CE}.Release|Any CPU.Build.0 = Release|Any CPU
+    EndGlobalSection
+EndGlobal
