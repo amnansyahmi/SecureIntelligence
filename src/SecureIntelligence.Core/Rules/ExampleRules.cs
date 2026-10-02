@@ -1,3 +1,4 @@
+using System.Globalization;
 using SecureIntelligence.Core.Models;
 
 namespace SecureIntelligence.Core.Rules;
@@ -43,7 +44,7 @@ public sealed class ReadyForQuoteWithoutBomRule : IIntelligenceRule
         if (!MissingSystemizationRule.TryGetBool(request, "readyForQuote", out var ready) || !ready)
             return null;
 
-        if (!TryGetInt(request, "bomItemCount", out var count) || count > 0)
+        if (!TryGetInt(request, "bomItemCount", out var count) || count != 0)
             return null;
 
         return new DiagnosticFinding(
@@ -59,7 +60,7 @@ public sealed class ReadyForQuoteWithoutBomRule : IIntelligenceRule
         value = 0;
         return request.Signals is not null &&
                request.Signals.TryGetValue(key, out var raw) &&
-               int.TryParse(raw, out value);
+               int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
     }
 }
 
@@ -71,7 +72,8 @@ public sealed class HighDatabaseLatencyRule : IIntelligenceRule
     {
         if (request.Signals is null ||
             !request.Signals.TryGetValue("dbLatencyMs", out var raw) ||
-            !double.TryParse(raw, out var latency) ||
+            !double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var latency) ||
+            !double.IsFinite(latency) ||
             latency < 1500)
         {
             return null;
@@ -81,7 +83,7 @@ public sealed class HighDatabaseLatencyRule : IIntelligenceRule
             Code,
             latency >= 5000 ? FindingSeverity.High : FindingSeverity.Medium,
             "Database latency is elevated",
-            $"The supplied database latency is {latency:0} ms.",
+            FormattableString.Invariant($"The supplied database latency is {latency:0} ms."),
             "Inspect the application's query timings and execution plan before attributing the issue to the intelligence service.");
     }
 }

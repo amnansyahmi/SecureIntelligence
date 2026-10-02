@@ -15,5 +15,6 @@ public sealed record CaseRecord(
 public interface ICaseRepository
 {
     Task<IReadOnlyList<CaseRecord>> GetAllAsync(CancellationToken cancellationToken = default);
-    Task AddAsync(CaseRecord record, CancellationToken cancellationToken = default);
+    Task<CaseRecord> AddAsync(CaseRecord record, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(string caseId, CancellationToken cancellationToken = default);
 }

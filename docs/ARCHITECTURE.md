@@ -1,60 +1,52 @@
-# Architecture notes
+# Architecture
 
-## Trust boundaries
+Application-owned APIs remain responsible for domain data and actions. SecureIntelligence receives selected diagnostic evidence, evaluates rules, and retrieves operator-approved cases. It has no application database credentials and no outbound AI integration.
 
-The intelligence service should not receive database credentials for Line Designer,
-MDIX, Delphic AP, or other applications. Each application remains the authority for
-its own data and actions.
-
-Preferred flow:
-
-```text
-Intelligence Service -> application-owned API -> authorization -> domain service -> database
+```mermaid
+flowchart TD
+    A["Application API"] --> B["HTTPS and caller authorization"]
+    B --> C["Validated diagnostic signals"]
+    C --> D["Deterministic rules"]
+    C --> E["Scoped case matching"]
+    D --> F["Findings and similar cases"]
+    E --> F
+    G["Operator review and learning key"] --> H["Learning allow-list"]
+    H --> I["Approved case store"]
+    I --> E
 ```
 
-Avoid:
+## Authorization and request handling
 
-```text
-Intelligence Service -> direct connection to every application database
-```
+Startup validates the diagnosis key and optional, separate learning key. The API pipeline performs routing, per-IP rate limiting, HTTPS enforcement outside Development, and key authorization before endpoint JSON binding. Learning metadata protects feedback, case inspection and case deletion. Diagnosis keys cannot submit learning approval. Learning keys may also diagnose.
 
-## Data contract strategy
+A 64 KiB Kestrel body limit bounds JSON parsing. Request validation limits text lengths and signal counts. Numeric parsing uses invariant culture; negative counts/latencies, NaN and infinities are invalid. Severity is serialized as a readable enum name.
 
-Expose only diagnostic features required by a rule or learning feature. Prefer
-application-specific allow-lists over forwarding entire records.
+Shared keys are a starter identity mechanism. They do not provide per-person attribution, per-application isolation, or an enterprise approval workflow. Integrators must replace or extend them for those needs. Development permits loopback HTTP for testing and must not be used as a production environment.
 
-Examples:
+## Learning boundary
 
-- `readyForQuote`
-- `bomItemCount`
-- `systemizationConfigured`
-- `dbLatencyMs`
+Only reviewed application names, issue types and typed signal keys can enter the store. Raw request descriptions are replaced with a fixed omission message. Unsupported signal keys cause a validation failure rather than silent loss of evidence. Causes and resolutions are generic, operator-reviewed text; basic checks reject common secret assignments, bearer credentials, email addresses and Malaysian IC formatting. This is not a complete redaction or personal-data detection system. Operator review remains essential.
 
-Avoid sending names, free-text clinical information, credentials, tokens, connection
-strings, or unneeded identifiers into the learning store.
+Learning stores a case; it neither changes rules nor trains a model. The approved boolean is the caller's attestation. A separate learning key prevents an ordinary diagnosis caller from making that attestation, but the service cannot prove a human actually reviewed it.
 
-## Learning policy
+## Retrieval
 
-The starter uses human-approved case learning:
+Cases must match application and issue type. Matching compares structured signals and never tokenizes a description or cause. Contradictory booleans and zero/nonzero numeric states exclude the case. Other numeric values use relative distance; missing keys reduce similarity. Results require a score of at least 0.6 and are deterministically ordered. No evidence means no result.
 
-1. Diagnose using deterministic rules and existing validated cases.
-2. Engineer confirms the actual cause and resolution.
-3. Engineer explicitly approves the case for learning.
-4. Store the sanitized case.
-5. Future incidents can match that case.
+Similarity is a heuristic retrieval score, not confidence, likelihood of a cause, or proof of a correct resolution. Returned cases are suggestions for an engineer to verify.
 
-The service does **not** mutate rules automatically.
+## Storage lifecycle
 
-## Future ML.NET layer
+The JSON repository uses a process-local semaphore, unique temporary files, flushes and atomic replacement. Repeated equivalent feedback returns the stored case ID. Read/write operations prune expired cases and enforce capacity. Deletion removes a case from the active file; it cannot erase filesystem backups.
 
-A later classifier can implement a small interface such as:
+Corrupt, null or legacy records fail closed with a generic 503 and leave the original file intact. Legacy cases containing raw descriptions require manual review and resubmission. There is no automatic migration that silently retains potentially sensitive fields.
 
-```csharp
-public interface IPredictionEngine
-{
-    Task<Prediction?> PredictAsync(DiagnosticRequest request, CancellationToken ct);
-}
-```
+This repository is for one process with a protected local data directory. It has no cross-process locking, database transactions, distributed rate limiter or scheduled retention worker. Use approved infrastructure for replicas and production retention requirements.
 
-Train candidate models offline/scheduled, evaluate them, then promote an approved
-version. Do not update production models directly from unreviewed user feedback.
+## Audit
+
+API-operation logs contain method, response status and server trace identifier. They do not deliberately include request bodies, keys, causes, resolutions or description text. Storage error messages returned to callers are generic. The liveness endpoint checks the process only. Gateway, host and centralized logging settings require their own review; do not enable request-body logging.
+
+## Future extension
+
+Add rules via `IIntelligenceRule`, reviewed schemas via `SignalSchema`/`LearningPolicy`, and transactional storage via `ICaseRepository`. An optional classical CPU classifier can be introduced later, with offline evaluation and an explicit promotion step. None is included or required here.

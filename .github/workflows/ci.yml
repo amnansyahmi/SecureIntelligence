@@ -1,0 +1,25 @@
+name: Build and verify
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: dotnet build SecureIntelligence.sln --configuration Release
+      - run: dotnet run --project tests/SecureIntelligence.Tests --configuration Release --no-build
+      - run: python scripts/smoke_test.py
