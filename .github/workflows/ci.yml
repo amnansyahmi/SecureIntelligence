@@ -23,3 +23,18 @@ jobs:
       - run: dotnet build SecureIntelligence.sln --configuration Release
       - run: dotnet run --project tests/SecureIntelligence.Tests --configuration Release --no-build
       - run: python scripts/smoke_test.py
+      - name: Install browser verification tools
+        if: runner.os == 'Linux'
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Verify dashboard in a real browser
+        if: runner.os == 'Linux'
+        run: python scripts/browser_test.py
+      - name: Save dashboard previews
+        if: runner.os == 'Linux' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-previews
+          path: test-artifacts/
+          if-no-files-found: ignore

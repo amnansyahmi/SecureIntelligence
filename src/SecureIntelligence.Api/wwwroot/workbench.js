@@ -143,6 +143,7 @@ $("#diagnose-form").addEventListener("submit", event => {
       if ($(selector).value !== "") signals[key] = $(selector).value;
     }
     const request = { application: $("#diag-application").value, issueType: $("#diag-issue").value, description: $("#diag-description").value, signals };
+    state.request = null; state.requestId = null; $("#proposal-form").hidden = true;
     const result = await api("/diagnose", request, "POST");
     state.request = request; state.requestId = result.requestId;
     renderDiagnosis(result);

@@ -10,3 +10,4 @@ src/SecureIntelligence.Api/Data/validated-cases.json
 *.tmp
 .env
 __pycache__/
+test-artifacts/
