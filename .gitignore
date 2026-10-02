@@ -5,3 +5,9 @@ obj/
 *.user
 *.suo
 src/SecureIntelligence.Api/Data/validated-cases.json
+
+**/Data/
+*.tmp
+.env
+__pycache__/
+test-artifacts/

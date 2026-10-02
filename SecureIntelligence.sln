@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureIntelligence.Core", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureIntelligence.Api", "src\SecureIntelligence.Api\SecureIntelligence.Api.csproj", "{95DD52D3-77DB-4B4A-84E4-15AF902196CE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureIntelligence.Tests", "tests\SecureIntelligence.Tests\SecureIntelligence.Tests.csproj", "{43C56749-4522-445F-9DA0-52E76F045F03}"
+EndProject
 Global
     GlobalSection(SolutionConfigurationPlatforms) = preSolution
         Debug|Any CPU = Debug|Any CPU
@@ -20,5 +22,9 @@ Global
         {95DD52D3-77DB-4B4A-84E4-15AF902196CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
         {95DD52D3-77DB-4B4A-84E4-15AF902196CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
         {95DD52D3-77DB-4B4A-84E4-15AF902196CE}.Release|Any CPU.Build.0 = Release|Any CPU
+        {43C56749-4522-445F-9DA0-52E76F045F03}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+        {43C56749-4522-445F-9DA0-52E76F045F03}.Debug|Any CPU.Build.0 = Debug|Any CPU
+        {43C56749-4522-445F-9DA0-52E76F045F03}.Release|Any CPU.ActiveCfg = Release|Any CPU
+        {43C56749-4522-445F-9DA0-52E76F045F03}.Release|Any CPU.Build.0 = Release|Any CPU
     EndGlobalSection
 EndGlobal

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>SecureIntelligence · Workbench</title>
+  <link rel="stylesheet" href="/workbench.css">
+  <script src="/workbench.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="SecureIntelligence home"><span class="brand-mark">SI</span><span>Secure<span class="brand-light">Intelligence</span></span></a>
+    <p class="nav-label">WORKBENCH</p>
+    <nav aria-label="Workbench sections">
+      <button class="nav-button active" data-view="diagnosis" aria-current="page">Diagnosis</button>
+      <button class="nav-button" data-view="knowledge">Knowledge</button>
+      <button class="nav-button" data-view="reviews">Learning reviews</button>
+      <button class="nav-button" data-view="cases">Approved cases</button>
+    </nav>
+    <div class="sidebar-note"><span class="status-dot"></span> Local rules &amp; retrieval<p>No model or external AI calls.</p></div>
+  </aside>
+  <main>
+    <header class="page-header"><div><p class="eyebrow">SECURE INTELLIGENCE</p><h1 id="page-title">Diagnosis</h1></div><div id="access-status" class="access-status">Not connected</div></header>
+    <section class="connection" aria-label="API connection">
+      <div><strong id="connection-heading">Connect to your service</strong><p id="connection-note">Use a caller key to diagnose and search, or a reviewer key to manage learning.</p></div>
+      <form id="connect-form" class="connection-form"><label class="sr-only" for="api-key">API key</label><input id="api-key" type="password" autocomplete="off" placeholder="API key" required minlength="32" maxlength="512"><button class="button primary" type="submit">Connect</button></form>
+      <button id="disconnect" class="button" type="button" hidden>Disconnect</button>
+    </section>
+    <div id="notice" role="status" aria-live="polite" hidden></div>
+
+    <section id="view-diagnosis" class="view">
+      <div class="section-intro"><p>Evaluate supplied signals against rules, approved cases and published guides.</p><button id="sample-diagnosis" class="text-button" type="button">Load example</button></div>
+      <div class="diagnosis-layout">
+        <form id="diagnose-form" class="panel">
+          <div class="panel-heading"><h2>Diagnostic input</h2><span class="muted">Structured evidence</span></div>
+          <div class="form-grid">
+            <label>Application<select id="diag-application"><option value="LineDesigner">Line Designer</option><option value="MDIX">MDIX</option></select></label>
+            <label>Issue type<select id="diag-issue"><option value="ReadyForQuote">Ready for Quote</option><option value="Performance">Performance</option></select></label>
+            <label class="span-2">Description<textarea id="diag-description" rows="3" required maxlength="4000" placeholder="Describe the diagnostic scenario. Avoid personal data and credentials."></textarea></label>
+          </div>
+          <h3 class="form-section">Signals</h3>
+          <div class="form-grid">
+            <label>Ready for Quote<select id="signal-ready"><option value="">Not supplied</option><option value="true">Yes</option><option value="false">No</option></select></label>
+            <label>Systemization configured<select id="signal-systemization"><option value="">Not supplied</option><option value="true">Yes</option><option value="false">No</option></select></label>
+            <label>BOM item count<input id="signal-bom" type="number" min="0" step="1" placeholder="Not supplied"></label>
+            <label>Database latency (ms)<input id="signal-latency" type="number" min="0" step="any" placeholder="Not supplied"></label>
+          </div>
+          <p class="field-note">Only supplied signals are evaluated. Request descriptions are omitted from stored cases.</p>
+          <button class="button primary full-width" type="submit">Run diagnosis</button>
+        </form>
+        <div class="results-column">
+          <div id="diagnostic-results" class="panel empty-state"><div class="empty-mark">01</div><h2>Your findings will appear here</h2><p>Connect and submit a scenario, or load the synthetic example.</p></div>
+          <form id="proposal-form" class="panel" hidden>
+            <div class="panel-heading"><h2>Propose a learning case</h2></div>
+            <p class="muted">This goes to the review queue. It becomes available after reviewer approval.</p>
+            <label>Proposed cause<input id="proposal-cause" required maxlength="2000" placeholder="A generic explanation of the cause"></label>
+            <label>Suggested resolution<textarea id="proposal-resolution" required rows="3" maxlength="4000" placeholder="The resolution to review"></textarea></label>
+            <button class="button" type="submit">Submit for review</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-knowledge" class="view" hidden>
+      <div class="section-intro"><p>Search published guides and read the exact source passages.</p><span class="muted">Keyword retrieval</span></div>
+      <form id="search-form" class="search-bar panel">
+        <label>Application<select id="search-application"><option value="LineDesigner">Line Designer</option><option value="MDIX">MDIX</option></select></label>
+        <label>Issue type<select id="search-issue"><option value="">All issues</option><option value="ReadyForQuote">Ready for Quote</option><option value="Performance">Performance</option><option value="General">General</option></select></label>
+        <label class="search-query">Search guides<input id="search-query" required maxlength="1000" placeholder="For example: BOM missing or database latency"></label>
+        <button class="button primary" type="submit">Search</button>
+      </form>
+      <div id="search-results" class="result-list"></div>
+      <details class="panel publish-panel" data-reviewer hidden>
+        <summary>Publish a reviewed guide</summary>
+        <form id="import-form">
+          <div class="form-grid">
+            <label>Application<select id="doc-application"><option value="LineDesigner">Line Designer</option><option value="MDIX">MDIX</option></select></label>
+            <label>Issue type<select id="doc-issue"><option value="General">General</option><option value="ReadyForQuote">Ready for Quote</option><option value="Performance">Performance</option></select></label>
+            <label class="span-2">Title<input id="doc-title" required maxlength="150"></label>
+            <label>Source reference<input id="doc-source" required maxlength="300" placeholder="Runbook name, file or revision"></label>
+            <label>Source URL (optional)<input id="doc-url" type="url" maxlength="500" placeholder="https://…"></label>
+            <label class="span-2">Guide text<textarea id="doc-content" required maxlength="20000" rows="8" placeholder="Reviewed troubleshooting content. Plain text and Markdown are displayed as text."></textarea></label>
+          </div>
+          <div class="import-tools"><label class="file-label">Load .txt or .md<input id="doc-file" type="file" accept=".txt,.md,text/plain,text/markdown"></label><button id="sample-guide" class="text-button" type="button">Load example guide</button></div>
+          <label class="check-label"><input id="doc-approved" type="checkbox" required> I reviewed this guide and approve it for publication.</label>
+          <button class="button primary" type="submit">Publish guide</button>
+        </form>
+      </details>
+      <div class="list-heading"><h2>Published guides</h2><button id="refresh-documents" class="text-button" type="button">Refresh</button></div>
+      <div id="documents-list" class="result-list"></div>
+    </section>
+
+    <section id="view-reviews" class="view" hidden>
+      <div class="section-intro"><p>Review proposed causes, resolutions and diagnostic evidence before publishing a case.</p><button id="refresh-reviews" class="text-button" type="button">Refresh</button></div>
+      <div id="review-access" class="panel empty-state"><h2>Reviewer access required</h2><p>Connect with the learning key to approve or reject proposed cases.</p></div>
+      <div id="review-tools" class="list-heading" data-reviewer hidden><h2>Learning queue</h2><label class="inline-label">Show<select id="review-filter"><option value="Pending">Pending</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option><option value="All">All proposals</option></select></label></div>
+      <div id="reviews-list" class="result-list"></div>
+    </section>
+
+    <section id="view-cases" class="view" hidden>
+      <div class="section-intro"><p>Inspect approved cases and record verified resolution outcomes.</p><button id="refresh-cases" class="text-button" type="button">Refresh</button></div>
+      <div id="case-access" class="panel empty-state"><h2>Reviewer access required</h2><p>Connect with the learning key to manage cases and record outcomes.</p></div>
+      <div id="cases-list" class="result-list"></div>
+    </section>
+    <footer>SecureIntelligence <span>Human-reviewed knowledge · CPU only</span></footer>
+  </main>
+</body>
+</html>

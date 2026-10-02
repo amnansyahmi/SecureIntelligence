@@ -32,7 +32,9 @@ public static class RequestGuard
             foreach (var (key, value) in request.Signals)
             {
                 ValidateText(key, "signal key", MaxSignalKeyLength, errors);
-                ValidateText(value, $"signal '{key}'", MaxSignalValueLength, errors);
+                ValidateText(value, "signal value", MaxSignalValueLength, errors);
+                if (SignalSchema.IsKnown(key) && !SignalSchema.TryNormalize(key, value, out _))
+                    errors.Add("A known signal has an invalid value; booleans and nonnegative finite numbers are required.");
             }
         }
 
