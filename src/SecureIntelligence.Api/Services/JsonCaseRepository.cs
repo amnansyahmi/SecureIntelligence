@@ -72,7 +72,7 @@ public sealed class JsonCaseRepository : ICaseRepository, IReviewRepository, IKn
         {
             var existing = s.Proposals.FirstOrDefault(p => p.Status == ProposalStatus.Pending && Equivalent(p.Case, record));
             if (existing is not null) return (existing, false);
-            if (s.Proposals.Count >= _options.MaxProposals) throw new ReviewConflictException("The review queue is full; review or remove existing proposals.");
+            if (s.Proposals.Count >= _options.MaxProposals) throw new ReviewConflictException("The review queue is full; remove obsolete review records before submitting more proposals.");
             var proposal = new LearningProposal(record.CaseId, record.CreatedAtUtc, record);
             s.Proposals.Add(proposal);
             return (proposal, true);
@@ -115,6 +115,12 @@ public sealed class JsonCaseRepository : ICaseRepository, IReviewRepository, IKn
             s.Proposals[index] = rejected;
             return (rejected, true);
         }, ct);
+
+    public Task<bool> DeleteProposalAsync(string proposalId, CancellationToken ct = default) => ExecuteAsync(s =>
+    {
+        var removed = s.Proposals.RemoveAll(p => p.ProposalId == proposalId) > 0;
+        return (removed, removed); // Removing history does not unpublish an approved case.
+    }, ct);
 
     public Task<bool> RecordOutcomeAsync(string caseId, OutcomeRequest outcome, CancellationToken ct = default) => ExecuteAsync(s =>
     {

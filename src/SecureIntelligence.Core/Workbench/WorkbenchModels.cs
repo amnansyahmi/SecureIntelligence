@@ -20,5 +20,6 @@ public interface IReviewRepository
     Task<LearningProposal> ProposeAsync(CaseRecord record, CancellationToken ct = default);
     Task<LearningProposal?> ApproveAsync(string proposalId, ProposalReviewRequest review, CancellationToken ct = default);
     Task<LearningProposal?> RejectAsync(string proposalId, RejectionReason reason, CancellationToken ct = default);
+    Task<bool> DeleteProposalAsync(string proposalId, CancellationToken ct = default);
     Task<bool> RecordOutcomeAsync(string caseId, OutcomeRequest outcome, CancellationToken ct = default);
 }

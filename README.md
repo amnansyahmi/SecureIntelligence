@@ -96,6 +96,7 @@ All `/api/v1` endpoints require `X-Internal-Api-Key`.
 | `POST /api/v1/proposals` | Diagnosis or learning | Submit a sanitized case for review; learning must be enabled |
 | `GET /api/v1/proposals` | Learning | Inspect pending and reviewed proposals |
 | `GET /api/v1/proposals/{id}` | Learning | Inspect one proposal |
+| `DELETE /api/v1/proposals/{id}` | Learning | Remove a queue/history record; any approved case remains active |
 | `POST /api/v1/proposals/{id}/approve` | Learning | Approve and publish a case atomically |
 | `POST /api/v1/proposals/{id}/reject` | Learning | Reject with a supported reason |
 | `POST /api/v1/cases/{caseId}/outcomes` | Learning | Record/correct a verified incident outcome |
@@ -138,7 +139,7 @@ Responses use named severity values (`High`, `Medium`, etc.). Invalid requests r
 
 ## Learning review and knowledge contracts
 
-`POST /proposals` accepts `request`, `confirmedCause` and `resolution`, with the same learning allow-lists as feedback. It returns 202 with `learned: false`. Pending or rejected proposals never appear in case matching. Review approval accepts `approvedForLearning: true` plus optional corrected `confirmedCause`/`resolution`. Repeated approvals are idempotent. Rejected proposals require a new corrected submission; rejected/approved decision conflicts return 409. Supported rejection reasons are `InsufficientEvidence`, `IncorrectCause`, `Duplicate` and `Other`.
+`POST /proposals` accepts `request`, `confirmedCause` and `resolution`, with the same learning allow-lists as feedback. It returns 202 with `learned: false`. Pending or rejected proposals never appear in case matching. Review approval accepts `approvedForLearning: true` plus optional corrected `confirmedCause`/`resolution`. Repeated approvals are idempotent. Rejected proposals require a new corrected submission; rejected/approved decision conflicts return 409. Review records can be deleted to remove obsolete candidates/history and free queue capacity. Deleting an approved review record does not delete its active case; use case deletion for that. Supported rejection reasons are `InsufficientEvidence`, `IncorrectCause`, `Duplicate` and `Other`.
 
 The direct `/feedback` endpoint remains available for approved integration workflows using the learning key. It does not require an intermediate queue entry.
 

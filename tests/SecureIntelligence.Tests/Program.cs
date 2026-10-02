@@ -192,6 +192,9 @@ static async Task Reviews()
     await ThrowsAsync<ReviewConflictException>(async () => { await fixture.Store.ApproveAsync(second.ProposalId, new(true)); });
     Check((await fixture.Store.GetAllAsync()).Count == 1);
     Check(!File.ReadAllText(fixture.File).Contains("Example description"));
+    Check(await fixture.Store.DeleteProposalAsync(proposal.ProposalId));
+    Check((await fixture.Store.GetAllAsync()).Count == 1);
+    Check(!await fixture.Store.DeleteProposalAsync(proposal.ProposalId));
 }
 static async Task Outcomes()
 {

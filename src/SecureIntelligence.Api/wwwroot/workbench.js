@@ -277,6 +277,11 @@ function renderReviews() {
       reject.addEventListener("click", () => perform(form, async () => { await api(`/proposals/${encodeURIComponent(proposal.proposalId)}/reject`, { reason: reason.value }, "POST"); await loadReviews(); notice("Proposal rejected. It was not added to active cases."); }));
       card.append(form);
     }
+    const remove = element("button", "text-button", "Delete review record"); remove.type = "button";
+    remove.addEventListener("click", () => { if (confirm("Delete this review record? Any already-approved case remains active; pending cases will not be published.")) perform(card, async () => {
+      await api(`/proposals/${encodeURIComponent(proposal.proposalId)}`, null, "DELETE"); await loadReviews(); notice("Review record removed. Any approved case remains active.");
+    }); });
+    const removal = element("div", "row-actions"); removal.append(remove); card.append(removal);
     container.append(card);
   });
 }

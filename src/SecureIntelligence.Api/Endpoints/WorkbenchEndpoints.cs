@@ -28,6 +28,8 @@ public static class WorkbenchEndpoints
             var proposal = (await repository.GetProposalsAsync(ct)).FirstOrDefault(p => p.ProposalId == id);
             return proposal is null ? Results.NotFound() : Results.Ok(proposal);
         });
+        review.MapDelete("/{id}", async (string id, IReviewRepository repository, CancellationToken ct) =>
+            await repository.DeleteProposalAsync(id, ct) ? Results.NoContent() : Results.NotFound());
         review.MapPost("/{id}/approve", async (string id, ProposalReviewRequest? input, IReviewRepository repository, CancellationToken ct) =>
         {
             var errors = new List<string>();
