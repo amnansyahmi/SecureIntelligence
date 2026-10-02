@@ -75,6 +75,11 @@ app.Use(async (context, next) =>
         }
     }
     try { await next(context); }
+    catch (BadHttpRequestException exception)
+    {
+        await Results.Problem("The request body is invalid or exceeds the permitted size.", statusCode: exception.StatusCode)
+            .ExecuteAsync(context);
+    }
     catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
     {
         // Avoid exception messages, raw request fields, keys and case contents in telemetry.
