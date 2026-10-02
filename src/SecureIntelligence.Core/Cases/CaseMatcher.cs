@@ -12,16 +12,21 @@ public sealed class CaseMatcher(ICaseRepository repository)
             return Array.Empty<CaseMatch>();
 
         var cases = await repository.GetAllAsync(cancellationToken);
+        var outcomes = (await repository.GetOutcomeSummariesAsync(cancellationToken)).ToDictionary(o => o.CaseId, StringComparer.Ordinal);
         return cases
             .Where(c => string.Equals(c.Application, request.Application, StringComparison.OrdinalIgnoreCase)
                      && string.Equals(c.IssueType, request.IssueType, StringComparison.OrdinalIgnoreCase))
             .Select(c => (Case: c, Score: Similarity(request.Signals, c.Signals)))
             .Where(x => x.Score >= 0.6)
             .OrderByDescending(x => x.Score)
+            .ThenByDescending(x => outcomes.TryGetValue(x.Case.CaseId, out var o) ? (double)(o.VerifiedSuccesses + 1) / (o.VerifiedSuccesses + o.VerifiedFailures + 2) : 0.5)
             .ThenBy(x => x.Case.CaseId, StringComparer.Ordinal)
             .Take(Math.Clamp(limit, 1, 10))
             .Select(x => new CaseMatch(x.Case.CaseId, x.Case.ConfirmedCause,
-                x.Case.Resolution, Math.Round(x.Score, 3)))
+                x.Case.Resolution, Math.Round(x.Score, 3),
+                Compare(request.Signals, x.Case.Signals),
+                outcomes.GetValueOrDefault(x.Case.CaseId)?.VerifiedSuccesses ?? 0,
+                outcomes.GetValueOrDefault(x.Case.CaseId)?.VerifiedFailures ?? 0))
             .ToArray();
     }
 
@@ -55,6 +60,17 @@ public sealed class CaseMatcher(ICaseRepository repository)
         }
         return shared == 0 ? 0 : score / (left.Count + right.Count - shared);
     }
+
+    private static IReadOnlyList<SignalComparison> Compare(IReadOnlyDictionary<string, string> requested,
+        IReadOnlyDictionary<string, string> stored) => requested.Keys.Union(stored.Keys, StringComparer.Ordinal)
+        .Order(StringComparer.Ordinal).Select(key =>
+        {
+            requested.TryGetValue(key, out var current);
+            stored.TryGetValue(key, out var previous);
+            var relation = current is null || previous is null ? "missing"
+                : string.Equals(current, previous, StringComparison.OrdinalIgnoreCase) ? "exact" : "different";
+            return new SignalComparison(key, current, previous, relation);
+        }).ToArray();
 
     private static bool TryNumber(string value, out double result) =>
         double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out result)

@@ -48,11 +48,11 @@ public static partial class LearningPolicy
 
     // This catches common accidental disclosures, not every form of personal data.
     // The learning operator must still review both text fields before submission.
-    private static void ValidateReviewedText(string? value, string field, int limit, List<string> errors)
+    public static void ValidateReviewedText(string? value, string field, int limit, List<string> errors, bool allowMultiline = false)
     {
         if (string.IsNullOrWhiteSpace(value) || value.Length > limit)
             errors.Add($"{field} is required and cannot exceed {limit} characters.");
-        else if (SensitiveText().IsMatch(value) || value.Any(char.IsControl))
+        else if (SensitiveText().IsMatch(value) || value.Any(c => char.IsControl(c) && !(allowMultiline && (c == '\n' || c == '\r' || c == '\t'))))
             errors.Add($"{field} contains potentially sensitive or unsupported content; submit reviewed generic text.");
     }
 

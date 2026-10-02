@@ -4,6 +4,7 @@ using System.Text;
 namespace SecureIntelligence.Api.Services;
 
 public sealed record LearningAccessRequired;
+public sealed record LearningFeatureRequired;
 
 public sealed class ApiKeyAccess
 {

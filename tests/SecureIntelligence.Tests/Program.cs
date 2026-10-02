@@ -5,6 +5,8 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using SecureIntelligence.Api.Services;
 using SecureIntelligence.Core.Cases;
+using SecureIntelligence.Core.Knowledge;
+using SecureIntelligence.Core.Workbench;
 using SecureIntelligence.Core.Models;
 using SecureIntelligence.Core.Rules;
 using SecureIntelligence.Core.Security;
@@ -19,7 +21,11 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Keys separate diagnosis and learning; missing/weak keys fail closed", Keys),
     ("Case store handles concurrent writes, duplicates and reload", Storage),
     ("Case deletion, retention and capacity persist", Retention),
-    ("Corrupt and legacy case stores are preserved and rejected", Corruption)
+    ("Corrupt and legacy case stores are preserved and rejected", Corruption),
+    ("Proposals stay inactive until atomic review; decisions are idempotent", Reviews),
+    ("Outcome corrections count once and deletion removes related data", Outcomes),
+    ("Knowledge is reviewed, searchable by scope, deduplicated and deletable", Knowledge),
+    ("Sanitized old case arrays migrate while incomplete envelopes fail closed", Migration)
 };
 var failures = 0;
 foreach (var (name, run) in tests)
@@ -152,7 +158,8 @@ static async Task Retention()
     Check((await fixture.Reload().GetAllAsync()).Count == 1);
     fixture.Clock.Now = fixture.Clock.Now.AddDays(91);
     Check((await fixture.Store.GetAllAsync()).Count == 0);
-    Check(JsonSerializer.Deserialize<CaseRecord[]>(File.ReadAllText(fixture.File))!.Length == 0);
+    using var json = JsonDocument.Parse(File.ReadAllText(fixture.File));
+    Check(json.RootElement.GetProperty("cases").GetArrayLength() == 0);
 }
 static async Task Corruption()
 {
@@ -164,6 +171,84 @@ static async Task Corruption()
         await ThrowsAsync<JsonException>(async () => { await fixture.Store.AddAsync(Record()); });
         Check(File.ReadAllText(fixture.File) == text);
     }
+}
+
+static async Task Reviews()
+{
+    using var fixture = new StoreFixture();
+    var proposal = await fixture.Store.ProposeAsync(Record());
+    Check((await fixture.Store.GetAllAsync()).Count == 0);
+    Check((await fixture.Store.ProposeAsync(Record())).ProposalId == proposal.ProposalId);
+    await ThrowsAsync<ReviewConflictException>(async () => { await fixture.Store.ApproveAsync(proposal.ProposalId, new(false)); });
+    Check((await fixture.Store.GetAllAsync()).Count == 0);
+    var approved = await fixture.Store.ApproveAsync(proposal.ProposalId, new(true, "Reviewed corrected cause", "Run reviewed validation"));
+    Check(approved!.Status == ProposalStatus.Approved);
+    Check((await fixture.Store.GetAllAsync()).Single().ConfirmedCause == "Reviewed corrected cause");
+    Check((await fixture.Store.ApproveAsync(proposal.ProposalId, new(true)))!.ActiveCaseId == approved.ActiveCaseId);
+    Check((await fixture.Reload().GetProposalsAsync()).Single().Status == ProposalStatus.Approved);
+    await ThrowsAsync<ReviewConflictException>(async () => { await fixture.Store.RejectAsync(proposal.ProposalId, RejectionReason.IncorrectCause); });
+    var second = await fixture.Store.ProposeAsync(Record() with { ConfirmedCause = "Another reviewed cause" });
+    await fixture.Store.RejectAsync(second.ProposalId, RejectionReason.InsufficientEvidence);
+    await ThrowsAsync<ReviewConflictException>(async () => { await fixture.Store.ApproveAsync(second.ProposalId, new(true)); });
+    Check((await fixture.Store.GetAllAsync()).Count == 1);
+    Check(!File.ReadAllText(fixture.File).Contains("Example description"));
+}
+static async Task Outcomes()
+{
+    using var fixture = new StoreFixture();
+    var proposal = await fixture.Store.ProposeAsync(Record());
+    var approved = (await fixture.Store.ApproveAsync(proposal.ProposalId, new(true)))!;
+    var incident = Guid.NewGuid().ToString("N");
+    await ThrowsAsync<ReviewConflictException>(async () => { await fixture.Store.RecordOutcomeAsync(approved.ActiveCaseId!, new(incident, true, false)); });
+    Check(await fixture.Store.RecordOutcomeAsync(approved.ActiveCaseId!, new(incident, true, true)));
+    Check(await fixture.Store.RecordOutcomeAsync(approved.ActiveCaseId!, new(incident, true, true)));
+    Check((await fixture.Store.GetOutcomeSummariesAsync()).Single().VerifiedSuccesses == 1);
+    Check(await fixture.Store.RecordOutcomeAsync(approved.ActiveCaseId!, new(incident, false, true)));
+    var summary = (await fixture.Reload().GetOutcomeSummariesAsync()).Single();
+    Check(summary.VerifiedSuccesses == 0 && summary.VerifiedFailures == 1);
+    var match = (await new CaseMatcher(fixture.Store).FindSimilarAsync(Request())).Single();
+    Check(match.VerifiedFailures == 1 && match.Evidence!.Count == 3);
+    await fixture.Store.DeleteAsync(approved.ActiveCaseId!);
+    Check((await fixture.Store.GetOutcomeSummariesAsync()).Count == 0);
+    Check((await fixture.Store.GetProposalsAsync()).Count == 0);
+}
+static async Task Knowledge()
+{
+    using var fixture = new StoreFixture();
+    var document = new KnowledgeImportRequest("LineDesigner", "ReadyForQuote", "BOM validation guide", "Reviewed runbook",
+        "If BOM items are missing, run the approved validation workflow.\nConfirm systemization before quotation.", true);
+    Check(KnowledgePolicy.Validate(document).Count == 0);
+    Check(KnowledgePolicy.Validate(document with { ApprovedForPublication = false }).Count > 0);
+    Check(KnowledgePolicy.Validate(document with { SourceUrl = "javascript:alert(1)" }).Count > 0);
+    Check(KnowledgePolicy.Validate(document with { SourceUrl = "https://example.com/?token=secret" }).Count > 0);
+    Check(KnowledgePolicy.Validate(document with { Content = "password=secret" }).Count > 0);
+    var stored = await fixture.Store.ImportAsync(document);
+    Check((await fixture.Store.ImportAsync(document)).DocumentId == stored.DocumentId);
+    var search = new KnowledgeSearch(fixture.Store);
+    Check((await search.SearchAsync(new("LineDesigner", "BOM missing", "ReadyForQuote"))).Single().Passage.Contains("BOM"));
+    Check((await search.SearchAsync(new("MDIX", "BOM missing"))).Count == 0);
+    Check((await search.SearchAsync(new("LineDesigner", "BOM missing", "Performance"))).Count == 0);
+    Check((await search.SearchAsync(new("LineDesigner", "unrelatedword"))).Count == 0);
+    await fixture.Store.ImportAsync(document with { IssueType = "General", Title = "General guide" });
+    Check((await search.SearchAsync(new("LineDesigner", "BOM", "Performance"))).Count == 1);
+    var unicode = await fixture.Store.ImportAsync(document with { Title = "Panduan", Content = "Sahkan konfigurasi sistem sebelum sebut harga." });
+    Check((await search.SearchAsync(new("LineDesigner", "konfigurasi"))).Single().DocumentId == unicode.DocumentId);
+    Check((await fixture.Reload().GetDocumentsAsync()).Count == 3);
+    Check(await fixture.Store.DeleteDocumentAsync(stored.DocumentId));
+    Check(!(await search.SearchAsync(new("LineDesigner", "BOM"))).Any(h => h.DocumentId == stored.DocumentId));
+}
+static async Task Migration()
+{
+    using var fixture = new StoreFixture();
+    File.WriteAllText(fixture.File, JsonSerializer.Serialize(new[] { Record() }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+    Check((await fixture.Store.GetAllAsync()).Count == 1);
+    await fixture.Store.ProposeAsync(Record());
+    using var json = JsonDocument.Parse(File.ReadAllText(fixture.File));
+    Check(json.RootElement.GetProperty("version").GetInt32() == 1);
+    Check((await fixture.Reload().GetAllAsync()).Count == 1);
+    File.WriteAllText(fixture.File, "{}");
+    await ThrowsAsync<JsonException>(async () => { await fixture.Store.GetAllAsync(); });
+    Check(File.ReadAllText(fixture.File) == "{}");
 }
 
 sealed class MemoryRepository : ICaseRepository
